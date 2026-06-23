@@ -11,9 +11,9 @@ app.use(cors({
   credentials: true
 }));
 
-// mongoose.connect(process.env.MONGO_URI)
-//  .then(() => console.log('✅ MongoDB Connected'))
-//  .catch(err => console.log('❌ DB Error:', err));
+ mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('✅ MongoDB Connected'))
+  .catch(err => console.log('❌ DB Error:', err));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'Server Running ✅' });

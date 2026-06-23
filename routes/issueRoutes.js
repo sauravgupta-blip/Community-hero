@@ -1,5 +1,5 @@
 const express = require('express');
-const Issue = require('../models/Issue');
+const Issue = require('../models/issue');
 const { analyzeIssue } = require('../services/googleAIService');
 
 const router = express.Router();
