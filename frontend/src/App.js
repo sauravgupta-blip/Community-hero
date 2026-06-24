@@ -341,6 +341,17 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     } catch (err) {}
   };
 
+  const handleAdvanceStatus = async (id, newStatus) => {
+    try {
+      await fetch(`${API_BASE}/api/issues/${id}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      refreshIssues();
+    } catch (err) {}
+  };
+
   const styles = {
     page: {
       background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -390,9 +401,18 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     historyTitle: { fontWeight: '700', fontSize: '16px', marginBottom: '12px', color: '#333' },
     historyItem: { padding: '12px', border: '1px solid #eee', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' },
     badge: { display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', marginRight: '8px' },
+    actionRow: { display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' },
     verifyBtn: {
-      marginTop: '6px', padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
+      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
       border: '1px solid #c7d2fe', background: '#eef2ff', color: '#4338ca', cursor: 'pointer',
+    },
+    progressBtn: {
+      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
+      border: '1px solid #93c5fd', background: '#dbeafe', color: '#1e40af', cursor: 'pointer',
+    },
+    resolveBtn: {
+      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
+      border: '1px solid #6ee7b7', background: '#d1fae5', color: '#065f46', cursor: 'pointer',
     },
   };
 
@@ -434,11 +454,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
             <div style={messageType === 'success' ? styles.messageSuccess : styles.messageError}>{message}</div>
           )}
 
-          {newIssueStatus && (
-            <div>
-              <StatusStepper status={newIssueStatus} />
-            </div>
-          )}
+          {newIssueStatus && <StatusStepper status={newIssueStatus} />}
 
           {department && (
             <div style={styles.departmentBox}>
@@ -456,10 +472,24 @@ function ReportPage({ onBack, issues, refreshIssues }) {
                 <span style={{ ...styles.badge, ...statusColor(issue.status) }}>{issue.status}</span>
                 <strong>{issue.category}</strong> — {issue.description}
                 <div style={{ color: '#888', marginTop: '4px' }}>{issue.location?.address || 'Unknown location'}</div>
+
                 <StatusStepper status={issue.status} compact />
-                <button style={styles.verifyBtn} onClick={() => handleVerify(issue._id)}>
-                  👍 Verify ({issue.verifications || 0})
-                </button>
+
+                <div style={styles.actionRow}>
+                  <button style={styles.verifyBtn} onClick={() => handleVerify(issue._id)}>
+                    👍 Verify ({issue.verifications || 0})
+                  </button>
+                  {issue.status !== 'resolved' && (
+                    <>
+                      <button style={styles.progressBtn} onClick={() => handleAdvanceStatus(issue._id, 'in-progress')}>
+                        🔧 Mark In Progress
+                      </button>
+                      <button style={styles.resolveBtn} onClick={() => handleAdvanceStatus(issue._id, 'resolved')}>
+                        ✅ Mark Resolved
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
