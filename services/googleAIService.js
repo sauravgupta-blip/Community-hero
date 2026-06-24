@@ -29,8 +29,10 @@ Return ONLY valid JSON:
     const text = response.response.text();
     const cleanText = text.replace(/```json|```/g, '').trim();
     return JSON.parse(cleanText);
-  } catch (error) {
+  }  catch (error) {
+    console.error('AI analysis failed:', error.message);
     return { category: 'Other', severity: 3, actionRequired: 'Review', estimatedDays: 5 };
+
   }
 };
 
