@@ -29,11 +29,18 @@ Return ONLY valid JSON:
     const text = response.response.text();
     const cleanText = text.replace(/```json|```/g, '').trim();
     return JSON.parse(cleanText);
-  }  catch (error) {
+  } catch (error) {
     console.error('AI analysis failed:', error.message);
-    return { category: 'Other', severity: 3, actionRequired: 'Review', estimatedDays: 5 };
-
-  }
+    // Fallback: keyword-based categorization when AI is unavailable
+    const text = description.toLowerCase();
+    let category = 'Other';
+    if (text.includes('pothole') || text.includes('pot hole') || text.includes('road')) category = 'Pothole';
+    else if (text.includes('water') || text.includes('leak') || text.includes('pipe')) category = 'Water Leak';
+    else if (text.includes('light') || text.includes('lamp') || text.includes('electric')) category = 'Broken Light';
+    else if (text.includes('garbage') || text.includes('trash') || text.includes('waste')) category = 'Garbage';
+    else if (text.includes('damaged') || text.includes('crack')) category = 'Damaged Road';
+    return { category, severity: 3, actionRequired: 'Review', estimatedDays: 5 };
+}
 };
 
 module.exports = { analyzeIssue };
