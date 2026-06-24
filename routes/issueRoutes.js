@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post('/', async (req, res) => {
   try {
-    const { imageBase64, description, latitude, longitude, userId } = req.body;
+    const { imageBase64, description, latitude, longitude, address, userId } = req.body;
     
     const analysis = await analyzeIssue(imageBase64, description);
     
@@ -15,7 +15,7 @@ router.post('/', async (req, res) => {
       description,
       category: analysis.category,
       severity: analysis.severity,
-      location: { lat: latitude, lng: longitude, address: 'Location' },
+      location: { lat: latitude, lng: longitude, address: address || 'Unknown location' },
       images: [imageBase64],
       createdBy: userId || 'anonymous',
       status: 'open'

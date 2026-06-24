@@ -1,4 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+
+const DEPARTMENTS = {
+  'Pothole': { name: 'PWD (Public Works Department)', phone: '1800-XXX-XXXX', email: 'pwd@municipal.gov.in' },
+  'Water Leak': { name: 'Water Supply Board', phone: '1800-XXX-XXXX', email: 'water@municipal.gov.in' },
+  'Broken Light': { name: 'Electricity Department', phone: '1800-XXX-XXXX', email: 'electricity@municipal.gov.in' },
+  'Garbage': { name: 'Sanitation Department', phone: '1800-XXX-XXXX', email: 'sanitation@municipal.gov.in' },
+  'Damaged Road': { name: 'PWD (Public Works Department)', phone: '1800-XXX-XXXX', email: 'pwd@municipal.gov.in' },
+  'Other': { name: 'General Municipal Helpline', phone: '1800-XXX-XXXX', email: 'helpdesk@municipal.gov.in' },
+};
 
 function App() {
   const [description, setDescription] = useState('');
@@ -7,6 +16,35 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState('');
+  const [location, setLocation] = useState(null);
+  const [locationStatus, setLocationStatus] = useState('Detecting location...');
+  const [department, setDepartment] = useState(null);
+  const [issues, setIssues] = useState([]);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setLocationStatus(`📍 ${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`);
+        },
+        () => setLocationStatus('⚠️ Location permission denied — using default')
+      );
+    } else {
+      setLocationStatus('⚠️ Geolocation not supported');
+    }
+    fetchIssues();
+  }, []);
+
+  const fetchIssues = async () => {
+    try {
+      const res = await fetch('https://community-hero-production.up.railway.app/api/issues');
+      const data = await res.json();
+      if (data.success) setIssues(data.issues.slice(0, 10));
+    } catch (err) {
+      console.log('Could not load issues list');
+    }
+  };
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -27,19 +65,21 @@ function App() {
     }
 
     setLoading(true);
+    setDepartment(null);
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
         const imageBase64 = reader.result.split(',')[1];
-        
+
         const response = await fetch('https://community-hero-production.up.railway.app/api/issues', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             imageBase64,
             description,
-            latitude: 25.3176,
-            longitude: 82.9739,
+            latitude: location ? location.lat : 25.3176,
+            longitude: location ? location.lng : 82.9739,
+            address: location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : 'Unknown location',
             userId: 'user123'
           })
         });
@@ -48,19 +88,22 @@ function App() {
         if (data.success) {
           setMessageType('success');
           setMessage('✅ Issue reported successfully!');
+          const category = data.analysis?.category || data.issue?.category || 'Other';
+          setDepartment(DEPARTMENTS[category] || DEPARTMENTS['Other']);
           setDescription('');
           setImage(null);
           setPreview(null);
+          fetchIssues();
         } else {
           setMessageType('error');
           setMessage('❌ Error: ' + data.error);
         }
+        setLoading(false);
       };
       reader.readAsDataURL(image);
     } catch (error) {
       setMessageType('error');
       setMessage('❌ Error: ' + error.message);
-    } finally {
       setLoading(false);
     }
   };
@@ -86,44 +129,23 @@ function App() {
       padding: '40px 20px',
       textAlign: 'center',
     },
-    title: {
-      fontSize: '32px',
-      margin: '0 0 10px 0',
+    title: { fontSize: '32px', margin: '0 0 10px 0' },
+    subtitle: { fontSize: '16px', opacity: 0.9, margin: 0 },
+    locationBar: {
+      fontSize: '13px',
+      opacity: 0.85,
+      marginTop: '10px',
     },
-    subtitle: {
-      fontSize: '16px',
-      opacity: 0.9,
-      margin: 0,
-    },
-    content: {
-      padding: '40px',
-    },
-    form: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '20px',
-    },
-    formGroup: {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px',
-    },
-    label: {
-      fontWeight: '600',
-      color: '#333',
-      fontSize: '14px',
-    },
+    content: { padding: '40px' },
+    form: { display: 'flex', flexDirection: 'column', gap: '20px' },
+    formGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
+    label: { fontWeight: '600', color: '#333', fontSize: '14px' },
     input: {
       padding: '12px 15px',
       border: '2px solid #e0e0e0',
       borderRadius: '8px',
       fontSize: '14px',
-      transition: 'all 0.3s',
       fontFamily: 'inherit',
-    },
-    inputFocus: {
-      borderColor: '#667eea',
-      boxShadow: '0 0 0 3px rgba(102, 126, 234, 0.1)',
     },
     button: {
       padding: '14px 24px',
@@ -134,17 +156,9 @@ function App() {
       fontSize: '16px',
       fontWeight: '600',
       cursor: 'pointer',
-      transition: 'all 0.3s',
       marginTop: '10px',
     },
-    buttonHover: {
-      transform: 'translateY(-2px)',
-      boxShadow: '0 5px 20px rgba(102, 126, 234, 0.4)',
-    },
-    buttonDisabled: {
-      opacity: 0.6,
-      cursor: 'not-allowed',
-    },
+    buttonDisabled: { opacity: 0.6, cursor: 'not-allowed' },
     preview: {
       maxWidth: '100%',
       height: 'auto',
@@ -172,6 +186,40 @@ function App() {
       textAlign: 'center',
       fontSize: '14px',
     },
+    departmentBox: {
+      padding: '18px',
+      background: '#eef2ff',
+      border: '1px solid #c7d2fe',
+      borderRadius: '8px',
+      marginTop: '15px',
+      fontSize: '14px',
+      color: '#333',
+    },
+    deptTitle: { fontWeight: '700', marginBottom: '8px', color: '#4338ca' },
+    historySection: { marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' },
+    historyTitle: { fontWeight: '700', fontSize: '16px', marginBottom: '12px', color: '#333' },
+    historyItem: {
+      padding: '12px',
+      border: '1px solid #eee',
+      borderRadius: '8px',
+      marginBottom: '8px',
+      fontSize: '13px',
+    },
+    badge: {
+      display: 'inline-block',
+      padding: '3px 10px',
+      borderRadius: '12px',
+      fontSize: '11px',
+      fontWeight: '600',
+      marginRight: '8px',
+    },
+  };
+
+  const statusColor = (status) => {
+    if (status === 'resolved') return { background: '#d4edda', color: '#155724' };
+    if (status === 'verified') return { background: '#fff3cd', color: '#856404' };
+    if (status === 'in-progress') return { background: '#cce5ff', color: '#004085' };
+    return { background: '#e2e3e5', color: '#383d41' };
   };
 
   return (
@@ -180,6 +228,7 @@ function App() {
         <div style={styles.header}>
           <h1 style={styles.title}>🏘️ Community Hero</h1>
           <p style={styles.subtitle}>Report local issues. Make a difference!</p>
+          <p style={styles.locationBar}>{locationStatus}</p>
         </div>
 
         <div style={styles.content}>
@@ -206,15 +255,10 @@ function App() {
               {preview && <img src={preview} alt="Preview" style={styles.preview} />}
             </div>
 
-            <button 
-              type="submit" 
-              disabled={loading} 
-              style={{
-                ...styles.button,
-                ...(loading && styles.buttonDisabled)
-              }}
-              onMouseEnter={(e) => !loading && (e.target.style.transform = 'translateY(-2px)')}
-              onMouseLeave={(e) => (e.target.style.transform = 'translateY(0)')}
+            <button
+              type="submit"
+              disabled={loading}
+              style={{ ...styles.button, ...(loading && styles.buttonDisabled) }}
             >
               {loading ? '⏳ Submitting...' : '📤 Report Issue'}
             </button>
@@ -225,6 +269,28 @@ function App() {
               {message}
             </div>
           )}
+
+          {department && (
+            <div style={styles.departmentBox}>
+              <div style={styles.deptTitle}>📞 Reported to: {department.name}</div>
+              <div>Phone: {department.phone}</div>
+              <div>Email: {department.email}</div>
+            </div>
+          )}
+
+          <div style={styles.historySection}>
+            <div style={styles.historyTitle}>🗂️ Recent Reported Issues</div>
+            {issues.length === 0 && <p style={{ fontSize: '13px', color: '#888' }}>No issues reported yet.</p>}
+            {issues.map((issue) => (
+              <div key={issue._id} style={styles.historyItem}>
+                <span style={{ ...styles.badge, ...statusColor(issue.status) }}>{issue.status}</span>
+                <strong>{issue.category}</strong> — {issue.description}
+                <div style={{ color: '#888', marginTop: '4px' }}>
+                  {issue.location?.address || 'Unknown location'}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
