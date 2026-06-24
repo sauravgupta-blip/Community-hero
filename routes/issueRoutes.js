@@ -84,4 +84,17 @@ router.get('/stats/all', async (req, res) => {
   }
 });
 
+router.patch('/:id/status', async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['open', 'verified', 'in-progress', 'resolved'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: 'Invalid status' });
+    }
+    const issue = await Issue.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    res.json({ success: true, issue });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 module.exports = router;
