@@ -30,6 +30,18 @@ function getStepIndex(status) {
   return idx === -1 ? 0 : idx;
 }
 
+function formatDate(dateStr) {
+  if (!dateStr) return 'Unknown date';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
+    ' • ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+}
+
+function mapLink(location) {
+  if (!location || !location.lat || !location.lng) return null;
+  return `https://www.google.com/maps?q=${location.lat},${location.lng}`;
+}
+
 // ---------------- STATUS STEPPER ----------------
 function StatusStepper({ status, compact }) {
   const currentIndex = getStepIndex(status);
@@ -122,6 +134,29 @@ function LandingPage({ onGetStarted, stats, issues }) {
   const resolvedCount = issues.filter(i => i.status === 'resolved').length;
   const recentResolved = issues.filter(i => i.status === 'resolved').slice(0, 3);
 
+  // Gamification: top reporters leaderboard
+  const reporterCounts = {};
+  issues.forEach(i => {
+    const user = i.createdBy || 'anonymous';
+    reporterCounts[user] = (reporterCounts[user] || 0) + 1;
+  });
+  const topReporters = Object.entries(reporterCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  // Predictive insight: most reported category
+  const topCategory = stats.byCategory && stats.byCategory.length > 0
+    ? [...stats.byCategory].sort((a, b) => b.count - a.count)[0]
+    : null;
+  const totalForPercent = stats.byCategory ? stats.byCategory.reduce((sum, c) => sum + c.count, 0) : 0;
+  const topCategoryPercent = topCategory && totalForPercent > 0
+    ? Math.round((topCategory.count / totalForPercent) * 100)
+    : 0;
+
+  const maxCategoryCount = stats.byCategory && stats.byCategory.length > 0
+    ? Math.max(...stats.byCategory.map(c => c.count))
+    : 1;
+
   const styles = {
     page: { fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif', color: '#222' },
     nav: {
@@ -163,6 +198,25 @@ function LandingPage({ onGetStarted, stats, issues }) {
       border: '1px solid #eee', boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
     },
     footer: { background: '#1a1a2e', color: '#aaa', textAlign: 'center', padding: '30px', fontSize: '13px' },
+
+    dashboardGrid: { display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '30px' },
+    dashboardCard: {
+      background: 'white', borderRadius: '14px', padding: '28px',
+      border: '1px solid #eee', boxShadow: '0 2px 10px rgba(0,0,0,0.04)',
+    },
+    cardTitle: { fontWeight: '700', fontSize: '16px', marginBottom: '18px', color: '#333' },
+    barRow: { marginBottom: '14px' },
+    barLabel: { fontSize: '13px', fontWeight: '600', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' },
+    barTrack: { background: '#eee', borderRadius: '6px', height: '10px', overflow: 'hidden' },
+    barFill: (pct) => ({ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg, #667eea, #764ba2)', borderRadius: '6px' }),
+    insightBox: {
+      background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '10px',
+      padding: '16px', fontSize: '13px', color: '#9a3412', marginTop: '10px',
+    },
+    leaderRow: {
+      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+      padding: '10px 0', borderBottom: '1px solid #f0f0f0', fontSize: '13px',
+    },
   };
 
   const features = [
@@ -201,6 +255,48 @@ function LandingPage({ onGetStarted, stats, issues }) {
           <div style={styles.statBox}>
             <div style={styles.statNum}>{stats.byCategory?.length || 0}</div>
             <div style={styles.statLabel}>Categories Tracked</div>
+          </div>
+        </div>
+      </div>
+
+      <div style={styles.section}>
+        <h2 style={styles.sectionTitle}>📊 Impact Dashboard</h2>
+        <div style={styles.dashboardGrid}>
+          <div style={styles.dashboardCard}>
+            <div style={styles.cardTitle}>Issues by Category</div>
+            {(!stats.byCategory || stats.byCategory.length === 0) && (
+              <p style={{ fontSize: '13px', color: '#888' }}>No data yet.</p>
+            )}
+            {stats.byCategory && stats.byCategory.map((c) => (
+              <div key={c._id} style={styles.barRow}>
+                <div style={styles.barLabel}>
+                  <span>{c._id || 'Other'}</span>
+                  <span>{c.count}</span>
+                </div>
+                <div style={styles.barTrack}>
+                  <div style={styles.barFill((c.count / maxCategoryCount) * 100)} />
+                </div>
+              </div>
+            ))}
+
+            {topCategory && (
+              <div style={styles.insightBox}>
+                📈 <strong>Predictive Insight:</strong> "{topCategory._id}" makes up {topCategoryPercent}% of all
+                reports — this is the highest-priority issue type. Authorities may want to allocate
+                resources here first.
+              </div>
+            )}
+          </div>
+
+          <div style={styles.dashboardCard}>
+            <div style={styles.cardTitle}>🏆 Top Community Heroes</div>
+            {topReporters.length === 0 && <p style={{ fontSize: '13px', color: '#888' }}>No reporters yet.</p>}
+            {topReporters.map(([user, count], i) => (
+              <div key={user} style={styles.leaderRow}>
+                <span>{['🥇', '🥈', '🥉'][i]} {user}</span>
+                <strong>{count} report{count > 1 ? 's' : ''}</strong>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -401,6 +497,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     historyTitle: { fontWeight: '700', fontSize: '16px', marginBottom: '12px', color: '#333' },
     historyItem: { padding: '12px', border: '1px solid #eee', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' },
     badge: { display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', marginRight: '8px' },
+    dateText: { fontSize: '11px', color: '#aaa', float: 'right' },
     actionRow: { display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' },
     verifyBtn: {
       padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
@@ -413,6 +510,11 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     resolveBtn: {
       padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
       border: '1px solid #6ee7b7', background: '#d1fae5', color: '#065f46', cursor: 'pointer',
+    },
+    mapBtn: {
+      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
+      border: '1px solid #fcd34d', background: '#fef9c3', color: '#854d0e', cursor: 'pointer',
+      textDecoration: 'none', display: 'inline-block',
     },
   };
 
@@ -467,31 +569,42 @@ function ReportPage({ onBack, issues, refreshIssues }) {
           <div style={styles.historySection}>
             <div style={styles.historyTitle}>🗂️ Recent Reported Issues</div>
             {issues.length === 0 && <p style={{ fontSize: '13px', color: '#888' }}>No issues reported yet.</p>}
-            {issues.slice(0, 10).map((issue) => (
-              <div key={issue._id} style={styles.historyItem}>
-                <span style={{ ...styles.badge, ...statusColor(issue.status) }}>{issue.status}</span>
-                <strong>{issue.category}</strong> — {issue.description}
-                <div style={{ color: '#888', marginTop: '4px' }}>{issue.location?.address || 'Unknown location'}</div>
+            {issues.slice(0, 10).map((issue) => {
+              const link = mapLink(issue.location);
+              return (
+                <div key={issue._id} style={styles.historyItem}>
+                  <span style={{ ...styles.badge, ...statusColor(issue.status) }}>{issue.status}</span>
+                  <span style={styles.dateText}>📅 {formatDate(issue.createdAt)}</span>
+                  <div style={{ marginTop: '6px' }}>
+                    <strong>{issue.category}</strong> — {issue.description}
+                  </div>
+                  <div style={{ color: '#888', marginTop: '4px' }}>{issue.location?.address || 'Unknown location'}</div>
 
-                <StatusStepper status={issue.status} compact />
+                  <StatusStepper status={issue.status} compact />
 
-                <div style={styles.actionRow}>
-                  <button style={styles.verifyBtn} onClick={() => handleVerify(issue._id)}>
-                    👍 Verify ({issue.verifications || 0})
-                  </button>
-                  {issue.status !== 'resolved' && (
-                    <>
-                      <button style={styles.progressBtn} onClick={() => handleAdvanceStatus(issue._id, 'in-progress')}>
-                        🔧 Mark In Progress
-                      </button>
-                      <button style={styles.resolveBtn} onClick={() => handleAdvanceStatus(issue._id, 'resolved')}>
-                        ✅ Mark Resolved
-                      </button>
-                    </>
-                  )}
+                  <div style={styles.actionRow}>
+                    <button style={styles.verifyBtn} onClick={() => handleVerify(issue._id)}>
+                      👍 Verify ({issue.verifications || 0})
+                    </button>
+                    {link && (
+                      <a href={link} target="_blank" rel="noopener noreferrer" style={styles.mapBtn}>
+                        📍 View on Map
+                      </a>
+                    )}
+                    {issue.status !== 'resolved' && (
+                      <>
+                        <button style={styles.progressBtn} onClick={() => handleAdvanceStatus(issue._id, 'in-progress')}>
+                          🔧 Mark In Progress
+                        </button>
+                        <button style={styles.resolveBtn} onClick={() => handleAdvanceStatus(issue._id, 'resolved')}>
+                          ✅ Mark Resolved
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
