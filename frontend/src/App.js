@@ -18,6 +18,23 @@ const STEPS = [
   { key: 'resolved', label: 'Resolved' },
 ];
 
+const SUGGESTIONS = [
+  'Pothole on the road',
+  'Pothole near intersection',
+  'Water leak from pipe',
+  'Water leak on road',
+  'Broken streetlight',
+  'Streetlight not working',
+  'Garbage overflow',
+  'Garbage not collected',
+  'Damaged road surface',
+  'Open manhole',
+  'Sewage overflow',
+  'Broken footpath',
+  'Fallen tree blocking road',
+  'Illegal dumping',
+];
+
 const statusColor = (status) => {
   if (status === 'resolved') return { background: '#d4edda', color: '#155724' };
   if (status === 'verified') return { background: '#fff3cd', color: '#856404' };
@@ -134,7 +151,6 @@ function LandingPage({ onGetStarted, stats, issues }) {
   const resolvedCount = issues.filter(i => i.status === 'resolved').length;
   const recentResolved = issues.filter(i => i.status === 'resolved').slice(0, 3);
 
-  // Gamification: top reporters leaderboard
   const reporterCounts = {};
   issues.forEach(i => {
     const user = i.createdBy || 'anonymous';
@@ -144,7 +160,6 @@ function LandingPage({ onGetStarted, stats, issues }) {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 3);
 
-  // Predictive insight: most reported category
   const topCategory = stats.byCategory && stats.byCategory.length > 0
     ? [...stats.byCategory].sort((a, b) => b.count - a.count)[0]
     : null;
@@ -342,6 +357,7 @@ function LandingPage({ onGetStarted, stats, issues }) {
 // ---------------- REPORT PAGE ----------------
 function ReportPage({ onBack, issues, refreshIssues }) {
   const [description, setDescription] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const [image, setImage] = useState(null);
   const [preview, setPreview] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -351,6 +367,10 @@ function ReportPage({ onBack, issues, refreshIssues }) {
   const [locationStatus, setLocationStatus] = useState('Detecting location...');
   const [department, setDepartment] = useState(null);
   const [newIssueStatus, setNewIssueStatus] = useState(null);
+
+  const filteredSuggestions = description.length > 0
+    ? SUGGESTIONS.filter(s => s.toLowerCase().includes(description.toLowerCase())).slice(0, 5)
+    : [];
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -470,9 +490,18 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     locationBar: { fontSize: '13px', opacity: 0.85, marginTop: '10px' },
     content: { padding: '40px' },
     form: { display: 'flex', flexDirection: 'column', gap: '20px' },
-    formGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
+    formGroup: { display: 'flex', flexDirection: 'column', gap: '8px', position: 'relative' },
     label: { fontWeight: '600', color: '#333', fontSize: '14px' },
     input: { padding: '12px 15px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit' },
+    suggestionBox: {
+      position: 'absolute', top: '100%', left: 0, right: 0,
+      background: 'white', border: '1px solid #e0e0e0', borderRadius: '8px',
+      marginTop: '4px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 20,
+      maxHeight: '180px', overflowY: 'auto',
+    },
+    suggestionItem: {
+      padding: '10px 15px', fontSize: '13px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0',
+    },
     button: {
       padding: '14px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px',
@@ -536,9 +565,24 @@ function ReportPage({ onBack, issues, refreshIssues }) {
                 type="text"
                 placeholder="Pothole, water leak, broken light..."
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => { setDescription(e.target.value); setShowSuggestions(true); }}
+                onFocus={() => setShowSuggestions(true)}
+                onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
                 style={styles.input}
               />
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <div style={styles.suggestionBox}>
+                  {filteredSuggestions.map((s, i) => (
+                    <div
+                      key={i}
+                      style={styles.suggestionItem}
+                      onClick={() => { setDescription(s); setShowSuggestions(false); }}
+                    >
+                      {s}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div style={styles.formGroup}>
