@@ -11,6 +11,13 @@ const DEPARTMENTS = {
 
 const API_BASE = 'https://community-hero-production.up.railway.app';
 
+const STEPS = [
+  { key: 'open', label: 'Issue Raised' },
+  { key: 'verified', label: 'Verified' },
+  { key: 'in-progress', label: 'Work Started' },
+  { key: 'resolved', label: 'Resolved' },
+];
+
 const statusColor = (status) => {
   if (status === 'resolved') return { background: '#d4edda', color: '#155724' };
   if (status === 'verified') return { background: '#fff3cd', color: '#856404' };
@@ -18,8 +25,67 @@ const statusColor = (status) => {
   return { background: '#e2e3e5', color: '#383d41' };
 };
 
+function getStepIndex(status) {
+  const idx = STEPS.findIndex(s => s.key === status);
+  return idx === -1 ? 0 : idx;
+}
+
+// ---------------- STATUS STEPPER ----------------
+function StatusStepper({ status, compact }) {
+  const currentIndex = getStepIndex(status);
+
+  const styles = {
+    wrapper: { display: 'flex', alignItems: 'center', margin: compact ? '10px 0' : '20px 0' },
+    stepWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 },
+    circle: (done, current) => ({
+      width: compact ? '18px' : '28px',
+      height: compact ? '18px' : '28px',
+      borderRadius: '50%',
+      background: done ? '#4338ca' : '#e0e0e0',
+      color: done ? 'white' : '#999',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      fontSize: compact ? '10px' : '13px',
+      fontWeight: '700',
+      border: current ? '3px solid #c7d2fe' : 'none',
+      transition: 'all 0.3s',
+    }),
+    line: (done) => ({
+      flex: 1,
+      height: '3px',
+      background: done ? '#4338ca' : '#e0e0e0',
+      transition: 'all 0.3s',
+    }),
+    label: {
+      fontSize: compact ? '9px' : '11px',
+      marginTop: '6px',
+      textAlign: 'center',
+      color: '#555',
+      fontWeight: '600',
+      maxWidth: '70px',
+    },
+  };
+
+  return (
+    <div style={styles.wrapper}>
+      {STEPS.map((step, i) => (
+        <React.Fragment key={step.key}>
+          <div style={styles.stepWrap}>
+            <div style={styles.circle(i <= currentIndex, i === currentIndex)}>
+              {i <= currentIndex ? '✓' : i + 1}
+            </div>
+            {!compact && <div style={styles.label}>{step.label}</div>}
+          </div>
+          {i < STEPS.length - 1 && <div style={styles.line(i < currentIndex)} />}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
 function App() {
-  const [view, setView] = useState('landing'); // 'landing' | 'report'
+  const [view, setView] = useState('landing');
   const [stats, setStats] = useState({ totalIssues: 0, byCategory: [] });
   const [issues, setIssues] = useState([]);
 
@@ -79,20 +145,14 @@ function LandingPage({ onGetStarted, stats, issues }) {
       border: 'none', background: 'white', color: '#4338ca', cursor: 'pointer',
       boxShadow: '0 8px 24px rgba(0,0,0,0.2)',
     },
-    statsBar: {
-      display: 'flex', justifyContent: 'center', gap: '60px', marginTop: '50px', flexWrap: 'wrap',
-    },
+    statsBar: { display: 'flex', justifyContent: 'center', gap: '60px', marginTop: '50px', flexWrap: 'wrap' },
     statBox: { textAlign: 'center' },
     statNum: { fontSize: '36px', fontWeight: '800' },
     statLabel: { fontSize: '14px', opacity: 0.85 },
     section: { maxWidth: '1000px', margin: '0 auto', padding: '70px 20px' },
     sectionTitle: { fontSize: '30px', fontWeight: '800', textAlign: 'center', marginBottom: '40px' },
-    featuresGrid: {
-      display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px',
-    },
-    featureCard: {
-      background: '#f8f9ff', borderRadius: '14px', padding: '28px', border: '1px solid #e0e4ff',
-    },
+    featuresGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '24px' },
+    featureCard: { background: '#f8f9ff', borderRadius: '14px', padding: '28px', border: '1px solid #e0e4ff' },
     featureIcon: { fontSize: '30px', marginBottom: '12px' },
     featureTitle: { fontWeight: '700', fontSize: '16px', marginBottom: '8px' },
     featureText: { fontSize: '13px', color: '#666', lineHeight: '1.5' },
@@ -102,9 +162,7 @@ function LandingPage({ onGetStarted, stats, issues }) {
       padding: '16px 20px', background: 'white', borderRadius: '10px',
       border: '1px solid #eee', boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
     },
-    footer: {
-      background: '#1a1a2e', color: '#aaa', textAlign: 'center', padding: '30px', fontSize: '13px',
-    },
+    footer: { background: '#1a1a2e', color: '#aaa', textAlign: 'center', padding: '30px', fontSize: '13px' },
   };
 
   const features = [
@@ -172,7 +230,7 @@ function LandingPage({ onGetStarted, stats, issues }) {
                 <strong>{issue.category}</strong> — {issue.description}
                 <div style={{ fontSize: '12px', color: '#888' }}>{issue.location?.address}</div>
               </div>
-              <span style={{ ...styles.badgeStyle, padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', ...statusColor(issue.status) }}>
+              <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', ...statusColor(issue.status) }}>
                 ✅ Resolved
               </span>
             </div>
@@ -180,9 +238,7 @@ function LandingPage({ onGetStarted, stats, issues }) {
         </div>
       </div>
 
-      <div style={styles.footer}>
-        Built for the community, by the community. © 2026 Community Hero.
-      </div>
+      <div style={styles.footer}>Built for the community, by the community. © 2026 Community Hero.</div>
     </div>
   );
 }
@@ -198,6 +254,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
   const [location, setLocation] = useState(null);
   const [locationStatus, setLocationStatus] = useState('Detecting location...');
   const [department, setDepartment] = useState(null);
+  const [newIssueStatus, setNewIssueStatus] = useState(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -233,6 +290,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
 
     setLoading(true);
     setDepartment(null);
+    setNewIssueStatus(null);
     try {
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -257,6 +315,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
           setMessage('✅ Issue reported successfully!');
           const category = data.analysis?.category || data.issue?.category || 'Other';
           setDepartment(DEPARTMENTS[category] || DEPARTMENTS['Other']);
+          setNewIssueStatus('open');
           setDescription('');
           setImage(null);
           setPreview(null);
@@ -306,20 +365,14 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     form: { display: 'flex', flexDirection: 'column', gap: '20px' },
     formGroup: { display: 'flex', flexDirection: 'column', gap: '8px' },
     label: { fontWeight: '600', color: '#333', fontSize: '14px' },
-    input: {
-      padding: '12px 15px', border: '2px solid #e0e0e0', borderRadius: '8px',
-      fontSize: '14px', fontFamily: 'inherit',
-    },
+    input: { padding: '12px 15px', border: '2px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit' },
     button: {
       padding: '14px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px',
       fontWeight: '600', cursor: 'pointer', marginTop: '10px',
     },
     buttonDisabled: { opacity: 0.6, cursor: 'not-allowed' },
-    preview: {
-      maxWidth: '100%', height: 'auto', borderRadius: '8px', marginTop: '15px',
-      boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-    },
+    preview: { maxWidth: '100%', height: 'auto', borderRadius: '8px', marginTop: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' },
     messageSuccess: {
       padding: '15px', background: '#d4edda', border: '1px solid #c3e6cb', borderRadius: '8px',
       color: '#155724', marginTop: '20px', textAlign: 'center', fontSize: '14px',
@@ -335,13 +388,8 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     deptTitle: { fontWeight: '700', marginBottom: '8px', color: '#4338ca' },
     historySection: { marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' },
     historyTitle: { fontWeight: '700', fontSize: '16px', marginBottom: '12px', color: '#333' },
-    historyItem: {
-      padding: '12px', border: '1px solid #eee', borderRadius: '8px', marginBottom: '8px', fontSize: '13px',
-    },
-    badge: {
-      display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px',
-      fontWeight: '600', marginRight: '8px',
-    },
+    historyItem: { padding: '12px', border: '1px solid #eee', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' },
+    badge: { display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', marginRight: '8px' },
     verifyBtn: {
       marginTop: '6px', padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
       border: '1px solid #c7d2fe', background: '#eef2ff', color: '#4338ca', cursor: 'pointer',
@@ -386,6 +434,12 @@ function ReportPage({ onBack, issues, refreshIssues }) {
             <div style={messageType === 'success' ? styles.messageSuccess : styles.messageError}>{message}</div>
           )}
 
+          {newIssueStatus && (
+            <div>
+              <StatusStepper status={newIssueStatus} />
+            </div>
+          )}
+
           {department && (
             <div style={styles.departmentBox}>
               <div style={styles.deptTitle}>📞 Reported to: {department.name}</div>
@@ -402,6 +456,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
                 <span style={{ ...styles.badge, ...statusColor(issue.status) }}>{issue.status}</span>
                 <strong>{issue.category}</strong> — {issue.description}
                 <div style={{ color: '#888', marginTop: '4px' }}>{issue.location?.address || 'Unknown location'}</div>
+                <StatusStepper status={issue.status} compact />
                 <button style={styles.verifyBtn} onClick={() => handleVerify(issue._id)}>
                   👍 Verify ({issue.verifications || 0})
                 </button>
