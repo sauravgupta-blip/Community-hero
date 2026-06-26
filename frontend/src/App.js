@@ -380,6 +380,8 @@ function ReportPage({ onBack, issues, refreshIssues }) {
   const [department, setDepartment] = useState(null);
   const [newIssueStatus, setNewIssueStatus] = useState(null);
   const [userSeverity, setUserSeverity] = useState('Medium');
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [votedIssues, setVotedIssues] = useState({});
 
   const filteredSuggestions = description.length > 0
     ? SUGGESTIONS.filter(s => s.toLowerCase().includes(description.toLowerCase())).slice(0, 5)
@@ -435,14 +437,19 @@ function ReportPage({ onBack, issues, refreshIssues }) {
             longitude: location ? location.lng : 82.9739,
             address: location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : 'Unknown location',
             userId: 'user123',
-            userSeverity
+            userSeverity,
+            isAnonymous
           })
         });
 
         const data = await response.json();
         if (data.success) {
           setMessageType('success');
-          setMessage('✅ Issue reported successfully!');
+          if (data.duplicate) {
+            setMessage('⚠️ This issue was already reported nearby! Your report has been added as a verification on the existing issue.');
+          } else {
+            setMessage('✅ Issue reported successfully!');
+          }
           const category = data.analysis?.category || data.issue?.category || 'Other';
           setDepartment(DEPARTMENTS[category] || DEPARTMENTS['Other']);
           setNewIssueStatus('open');
@@ -450,6 +457,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
           setImage(null);
           setPreview(null);
           setUserSeverity('Medium');
+          setIsAnonymous(false);
           refreshIssues();
         } else {
           setMessageType('error');
@@ -479,6 +487,15 @@ function ReportPage({ onBack, issues, refreshIssues }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus })
       });
+      refreshIssues();
+    } catch (err) {}
+  };
+
+  const handleVote = async (id, type) => {
+    if (votedIssues[id]) return;
+    try {
+      await fetch(`${API_BASE}/api/issues/${id}/${type}`, { method: 'POST' });
+      setVotedIssues(prev => ({ ...prev, [id]: type }));
       refreshIssues();
     } catch (err) {}
   };
@@ -528,6 +545,18 @@ function ReportPage({ onBack, issues, refreshIssues }) {
         color: active ? s.color : '#888',
       };
     },
+    toggleRow: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '12px 15px', border: '2px solid #e0e0e0', borderRadius: '8px',
+    },
+    toggleSwitch: (active) => ({
+      width: '44px', height: '24px', borderRadius: '12px', cursor: 'pointer',
+      background: active ? '#4338ca' : '#ccc', position: 'relative', transition: 'background 0.2s',
+    }),
+    toggleKnob: (active) => ({
+      width: '18px', height: '18px', borderRadius: '50%', background: 'white',
+      position: 'absolute', top: '3px', left: active ? '23px' : '3px', transition: 'left 0.2s',
+    }),
     button: {
       padding: '14px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
       color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px',
@@ -553,7 +582,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     historyItem: { padding: '12px', border: '1px solid #eee', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' },
     badge: { display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', marginRight: '8px' },
     dateText: { fontSize: '11px', color: '#aaa', float: 'right' },
-    actionRow: { display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap' },
+    actionRow: { display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' },
     verifyBtn: {
       padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
       border: '1px solid #c7d2fe', background: '#eef2ff', color: '#4338ca', cursor: 'pointer',
@@ -571,6 +600,11 @@ function ReportPage({ onBack, issues, refreshIssues }) {
       border: '1px solid #fcd34d', background: '#fef9c3', color: '#854d0e', cursor: 'pointer',
       textDecoration: 'none', display: 'inline-block',
     },
+    voteBtn: (active) => ({
+      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
+      border: '1px solid #ddd', background: active ? '#e0e7ff' : 'white', color: '#444',
+      cursor: active ? 'default' : 'pointer',
+    }),
   };
 
   return (
@@ -627,6 +661,15 @@ function ReportPage({ onBack, issues, refreshIssues }) {
             </div>
 
             <div style={styles.formGroup}>
+              <div style={styles.toggleRow}>
+                <label style={styles.label}>🕶️ Report Anonymously</label>
+                <div style={styles.toggleSwitch(isAnonymous)} onClick={() => setIsAnonymous(!isAnonymous)}>
+                  <div style={styles.toggleKnob(isAnonymous)} />
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.formGroup}>
               <label style={styles.label}>📸 Upload Image:</label>
               <input type="file" accept="image/*" onChange={handleImageChange} style={styles.input} />
               {preview && <img src={preview} alt="Preview" style={styles.preview} />}
@@ -656,6 +699,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
             {issues.length === 0 && <p style={{ fontSize: '13px', color: '#888' }}>No issues reported yet.</p>}
             {issues.slice(0, 10).map((issue) => {
               const link = mapLink(issue.location);
+              const voted = votedIssues[issue._id];
               return (
                 <div key={issue._id} style={styles.historyItem}>
                   <span style={{ ...styles.badge, ...statusColor(issue.status) }}>{issue.status}</span>
@@ -665,14 +709,21 @@ function ReportPage({ onBack, issues, refreshIssues }) {
                   <span style={styles.dateText}>📅 {formatDate(issue.createdAt)}</span>
                   <div style={{ marginTop: '6px' }}>
                     <strong>{issue.category}</strong> — {issue.description}
+                    {issue.isAnonymous && <span style={{ color: '#888', fontStyle: 'italic' }}> (Anonymous)</span>}
                   </div>
                   <div style={{ color: '#888', marginTop: '4px' }}>{issue.location?.address || 'Unknown location'}</div>
 
                   <StatusStepper status={issue.status} compact />
 
                   <div style={styles.actionRow}>
+                    <button style={styles.voteBtn(voted === 'upvote')} onClick={() => handleVote(issue._id, 'upvote')}>
+                      👍 {issue.upvotes || 0}
+                    </button>
+                    <button style={styles.voteBtn(voted === 'downvote')} onClick={() => handleVote(issue._id, 'downvote')}>
+                      👎 {issue.downvotes || 0}
+                    </button>
                     <button style={styles.verifyBtn} onClick={() => handleVerify(issue._id)}>
-                      👍 Verify ({issue.verifications || 0})
+                      ✅ Verify ({issue.verifications || 0})
                     </button>
                     {link && (
                       <a href={link} target="_blank" rel="noopener noreferrer" style={styles.mapBtn}>

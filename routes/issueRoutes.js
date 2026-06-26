@@ -4,12 +4,54 @@ const { analyzeIssue } = require('../services/googleAIService');
 
 const router = express.Router();
 
+function getDistanceMeters(lat1, lon1, lat2, lon2) {
+  const R = 6371000;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
 router.post('/', async (req, res) => {
   try {
-    const { imageBase64, description, latitude, longitude, address, userId, userSeverity } = req.body;
-    
+    const { imageBase64, description, latitude, longitude, address, userId, userSeverity, isAnonymous } = req.body;
+
     const analysis = await analyzeIssue(imageBase64, description);
-    
+    const category = analysis.category;
+
+    const nearbyIssues = await Issue.find({
+      category,
+      status: { $in: ['open', 'verified', 'in-progress'] }
+    });
+
+    let duplicate = null;
+    for (const existing of nearbyIssues) {
+      if (existing.location && existing.location.lat && existing.location.lng) {
+        const dist = getDistanceMeters(latitude, longitude, existing.location.lat, existing.location.lng);
+        if (dist <= 50) {
+          duplicate = existing;
+          break;
+        }
+      }
+    }
+
+    if (duplicate) {
+      duplicate.verifications += 1;
+      if (duplicate.verifications >= 3 && duplicate.status === 'open') {
+        duplicate.status = 'verified';
+      }
+      await duplicate.save();
+
+      return res.json({
+        success: true,
+        duplicate: true,
+        issue: { _id: duplicate._id, category: duplicate.category, severity: duplicate.severity, verifications: duplicate.verifications },
+        analysis
+      });
+    }
+
     const issue = new Issue({
       title: analysis.category,
       description,
@@ -18,14 +60,16 @@ router.post('/', async (req, res) => {
       userSeverity: userSeverity || 'Medium',
       location: { lat: latitude, lng: longitude, address: address || 'Unknown location' },
       images: [imageBase64],
-      createdBy: userId || 'anonymous',
+      createdBy: isAnonymous ? 'Anonymous' : (userId || 'user123'),
+      isAnonymous: !!isAnonymous,
       status: 'open'
     });
-    
+
     await issue.save();
-    
+
     res.json({
       success: true,
+      duplicate: false,
       issue: { _id: issue._id, category: issue.category, severity: issue.severity },
       analysis
     });
@@ -56,11 +100,11 @@ router.post('/:id/verify', async (req, res) => {
   try {
     const issue = await Issue.findById(req.params.id);
     issue.verifications += 1;
-    
+
     if (issue.verifications >= 3 && issue.status === 'open') {
       issue.status = 'verified';
     }
-    
+
     await issue.save();
     res.json({ success: true, verifications: issue.verifications, status: issue.status });
   } catch (error) {
@@ -68,18 +112,19 @@ router.post('/:id/verify', async (req, res) => {
   }
 });
 
-router.get('/stats/all', async (req, res) => {
+router.post('/:id/upvote', async (req, res) => {
   try {
-    const total = await Issue.countDocuments();
-    const byCategory = await Issue.aggregate([
-      { $group: { _id: '$category', count: { $sum: 1 } } }
-    ]);
-    
-    res.json({
-      success: true,
-      totalIssues: total,
-      byCategory
-    });
+    const issue = await Issue.findByIdAndUpdate(req.params.id, { $inc: { upvotes: 1 } }, { new: true });
+    res.json({ success: true, upvotes: issue.upvotes, downvotes: issue.downvotes });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/:id/downvote', async (req, res) => {
+  try {
+    const issue = await Issue.findByIdAndUpdate(req.params.id, { $inc: { downvotes: 1 } }, { new: true });
+    res.json({ success: true, upvotes: issue.upvotes, downvotes: issue.downvotes });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -98,4 +143,22 @@ router.patch('/:id/status', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+router.get('/stats/all', async (req, res) => {
+  try {
+    const total = await Issue.countDocuments();
+    const byCategory = await Issue.aggregate([
+      { $group: { _id: '$category', count: { $sum: 1 } } }
+    ]);
+
+    res.json({
+      success: true,
+      totalIssues: total,
+      byCategory
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
