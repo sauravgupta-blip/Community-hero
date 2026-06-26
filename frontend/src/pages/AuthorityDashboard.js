@@ -40,7 +40,6 @@ export default function AuthorityDashboard() {
       const data = await res.json();
       if (data.success) {
         setIssues(data.issues);
-        // keep selectedIssue in sync after refresh
         if (selectedIssue) {
           const updated = data.issues.find(i => i._id === selectedIssue._id);
           if (updated) setSelectedIssue(updated);
@@ -152,43 +151,50 @@ export default function AuthorityDashboard() {
           <div style={styles.detailPanel}>
             <h3>✏️ Issue Details & Actions</h3>
 
-            {selectedIssue.images && selectedIssue.images[0] && (
-              <img
-                src={`data:image/jpeg;base64,${selectedIssue.images[0]}`}
-                alt="Issue"
-                style={styles.photo}
-              />
-            )}
-
-            <div style={styles.detailContent}>
-              <p><strong>Category:</strong> {selectedIssue.category}</p>
-              <p><strong>Description:</strong> {selectedIssue.description}</p>
-              <p><strong>Severity:</strong> {selectedIssue.userSeverity || 'Not set'}</p>
-              <p><strong>Reported:</strong> {formatDate(selectedIssue.createdAt)}</p>
-              <p><strong>Reporter:</strong> {selectedIssue.isAnonymous ? 'Anonymous' : (selectedIssue.createdBy || 'Unknown')}</p>
-              <p>
-                <strong>Location:</strong> {selectedIssue.location?.address || 'Unknown'}
-                {mapLink(selectedIssue.location) && (
-                  <a href={mapLink(selectedIssue.location)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '8px' }}>
-                    📍 View on Map
-                  </a>
+            {/* SIDE BY SIDE: Image left, Info right */}
+            <div style={styles.splitRow}>
+              <div style={styles.splitImageCol}>
+                {selectedIssue.images && selectedIssue.images[0] ? (
+                  <img
+                    src={`data:image/jpeg;base64,${selectedIssue.images[0]}`}
+                    alt="Issue"
+                    style={styles.splitPhoto}
+                  />
+                ) : (
+                  <div style={styles.noPhoto}>No photo</div>
                 )}
-              </p>
-              <p>
-                <strong>Current Status:</strong>{' '}
-                <span style={{
-                  ...styles.statusBadge,
-                  background: getStatusColor(selectedIssue.status)
-                }}>
-                  {selectedIssue.status}
-                </span>
-              </p>
-
-              <div style={styles.voteSummary}>
-                <span style={styles.voteItem}>👍 {selectedIssue.upvotes || 0} Upvotes</span>
-                <span style={styles.voteItem}>👎 {selectedIssue.downvotes || 0} Downvotes</span>
-                <span style={styles.voteItem}>✅ {selectedIssue.verifications || 0} Verified by community</span>
               </div>
+
+              <div style={styles.splitInfoCol}>
+                <p><strong>Category:</strong> {selectedIssue.category}</p>
+                <p><strong>Description:</strong> {selectedIssue.description}</p>
+                <p><strong>Severity:</strong> {selectedIssue.userSeverity || 'Not set'}</p>
+                <p><strong>Reported:</strong> {formatDate(selectedIssue.createdAt)}</p>
+                <p><strong>Reporter:</strong> {selectedIssue.isAnonymous ? 'Anonymous' : (selectedIssue.createdBy || 'Unknown')}</p>
+                <p>
+                  <strong>Location:</strong> {selectedIssue.location?.address || 'Unknown'}
+                  {mapLink(selectedIssue.location) && (
+                    <a href={mapLink(selectedIssue.location)} target="_blank" rel="noopener noreferrer" style={{ marginLeft: '8px' }}>
+                      📍 Map
+                    </a>
+                  )}
+                </p>
+                <p>
+                  <strong>Status:</strong>{' '}
+                  <span style={{
+                    ...styles.statusBadge,
+                    background: getStatusColor(selectedIssue.status)
+                  }}>
+                    {selectedIssue.status}
+                  </span>
+                </p>
+              </div>
+            </div>
+
+            <div style={styles.voteSummary}>
+              <span style={styles.voteItem}>👍 {selectedIssue.upvotes || 0} Upvotes</span>
+              <span style={styles.voteItem}>👎 {selectedIssue.downvotes || 0} Downvotes</span>
+              <span style={styles.voteItem}>✅ {selectedIssue.verifications || 0} Verified</span>
             </div>
 
             {selectedIssue.status === 'resolved' && selectedIssue.images?.[0] && selectedIssue.afterImage && (
@@ -268,9 +274,14 @@ const styles = {
   statusBadge: { color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold', display: 'inline-block' },
   reporter: { fontSize: '12px', color: '#999', marginTop: '8px' },
   detailPanel: { background: '#f9f9f9', padding: '20px', borderRadius: '10px', border: '2px solid #667eea' },
-  photo: { width: '100%', height: '250px', objectFit: 'cover', borderRadius: '8px', marginBottom: '15px' },
-  detailContent: { background: 'white', padding: '15px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px' },
-  voteSummary: { display: 'flex', gap: '14px', flexWrap: 'wrap', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #eee' },
+
+  splitRow: { display: 'flex', gap: '16px', marginBottom: '16px' },
+  splitImageCol: { flex: '0 0 40%' },
+  splitInfoCol: { flex: 1, background: 'white', padding: '14px', borderRadius: '8px', fontSize: '13px' },
+  splitPhoto: { width: '100%', height: '180px', objectFit: 'cover', borderRadius: '8px' },
+  noPhoto: { width: '100%', height: '180px', background: '#eee', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999', fontSize: '12px' },
+
+  voteSummary: { display: 'flex', gap: '14px', flexWrap: 'wrap', marginBottom: '16px' },
   voteItem: { fontSize: '12px', fontWeight: '600', color: '#4338ca', background: '#eef2ff', padding: '4px 10px', borderRadius: '12px' },
   actionsSection: { background: 'white', padding: '15px', borderRadius: '8px' },
   statusButtons: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '15px' },
