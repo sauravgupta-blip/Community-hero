@@ -30,9 +30,10 @@ export default function AuthorityDashboard() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [resolvePhoto, setResolvePhoto] = useState(null);
 
-  useEffect(() => {
-    fetchIssues();
-  }, []);
+ // eslint-disable-next-line react-hooks/exhaustive-deps
+useEffect(() => {
+  fetchIssues();
+}, []);
 
   const fetchIssues = async () => {
     try {
