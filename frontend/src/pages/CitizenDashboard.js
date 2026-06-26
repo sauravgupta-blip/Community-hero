@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios'; 
 
 const DEPARTMENTS = {
   'Pothole': { name: 'PWD (Public Works Department)', phone: '1800-XXX-XXXX', email: 'pwd@municipal.gov.in' },
