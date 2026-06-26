@@ -401,7 +401,6 @@ function ReportPage({ onBack, issues, refreshIssues }) {
   const [userSeverity, setUserSeverity] = useState('Medium');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [votedIssues, setVotedIssues] = useState({});
-  const [resolvingId, setResolvingId] = useState(null);
 
   const filteredSuggestions = description.length > 0
     ? SUGGESTIONS.filter(s => s.toLowerCase().includes(description.toLowerCase())).slice(0, 5)
@@ -498,27 +497,6 @@ function ReportPage({ onBack, issues, refreshIssues }) {
       await fetch(`${API_BASE}/api/issues/${id}/verify`, { method: 'POST' });
       refreshIssues();
     } catch (err) {}
-  };
-
-  const handleAdvanceStatus = async (id, newStatus, afterImage) => {
-    try {
-      await fetch(`${API_BASE}/api/issues/${id}/status`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus, afterImage })
-      });
-      refreshIssues();
-    } catch (err) {}
-  };
-
-  const handleResolveWithPhoto = (id, file) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const afterImageBase64 = reader.result.split(',')[1];
-      handleAdvanceStatus(id, 'resolved', afterImageBase64);
-      setResolvingId(null);
-    };
-    reader.readAsDataURL(file);
   };
 
   // Toggle voting: click again to undo, switching types removes the old vote
@@ -660,20 +638,6 @@ function ReportPage({ onBack, issues, refreshIssues }) {
       padding: '4px 10px', fontSize: '12px', borderRadius: '6px', fontWeight: '600',
       border: '1px solid #c7d2fe', background: 'white', color: '#4338ca', cursor: 'pointer',
     },
-    adminGroup: { display: 'flex', gap: '6px' },
-    progressBtn: {
-      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', fontWeight: '600',
-      border: '1px solid #93c5fd', background: 'white', color: '#1e40af', cursor: 'pointer',
-    },
-    resolveBtn: {
-      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', fontWeight: '600',
-      border: '1px solid #6ee7b7', background: 'white', color: '#065f46', cursor: 'pointer',
-    },
-    resolveUploadBox: {
-      padding: '10px 14px', background: '#f0fdf4', borderTop: '1px solid #d1fae5',
-    },
-    resolveUploadLabel: { fontSize: '12px', fontWeight: '600', color: '#065f46', marginBottom: '6px', display: 'block' },
-    cancelLink: { fontSize: '11px', color: '#888', cursor: 'pointer', marginLeft: '8px' },
     beforeAfterRow: { display: 'flex', gap: '8px', padding: '0 14px 10px 14px' },
     beforeAfterImg: { width: '100%', height: '100px', objectFit: 'cover', borderRadius: '6px' },
     beforeAfterLabel: { fontSize: '10px', color: '#888', textAlign: 'center', marginTop: '3px', fontWeight: '600' },
@@ -824,32 +788,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
                         ✅ {issue.verifications || 0}
                       </button>
                     </div>
-
-                    {issue.status !== 'resolved' && (
-                      <div style={styles.adminGroup}>
-                        <button style={styles.progressBtn} onClick={() => handleAdvanceStatus(issue._id, 'in-progress')}>
-                          In Progress
-                        </button>
-                        <button style={styles.resolveBtn} onClick={() => setResolvingId(issue._id)}>
-                          Resolve
-                        </button>
-                      </div>
-                    )}
                   </div>
-
-                  {resolvingId === issue._id && (
-                    <div style={styles.resolveUploadBox}>
-                      <label style={styles.resolveUploadLabel}>
-                        📸 Upload an "after" photo to confirm resolution:
-                      </label>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => e.target.files[0] && handleResolveWithPhoto(issue._id, e.target.files[0])}
-                      />
-                      <span style={styles.cancelLink} onClick={() => setResolvingId(null)}>Cancel</span>
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -859,4 +798,3 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     </div>
   );
 }
-
