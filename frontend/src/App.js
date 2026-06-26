@@ -347,17 +347,19 @@ function LandingPage({ onGetStarted, stats, issues }) {
           {recentResolved.length === 0 && (
             <p style={{ textAlign: 'center', color: '#888' }}>No resolved issues yet — be the first to report one!</p>
           )}
-          {recentResolved.map((issue) => (
-            <div key={issue._id} style={styles.resolvedCard}>
-              <div>
-                <strong>{issue.category}</strong> — {issue.description}
-                <div style={{ fontSize: '12px', color: '#888' }}>{issue.location?.address}</div>
-              </div>
-              <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', ...statusColor(issue.status) }}>
-                ✅ Resolved
-              </span>
-            </div>
-          ))}
+       {recentResolved.map((issue) => (
+         <div key={issue._id} style={styles.resolvedCard}>
+          <div>
+          <strong>{issue.category}</strong> — {issue.description}
+         <div style={{ fontSize: '12px', color: '#888' }}>
+        {issue.location?.address} • {formatDate(issue.createdAt)}
+      </div>
+    </div>
+    <span style={{ padding: '4px 12px', borderRadius: '12px', fontSize: '12px', fontWeight: '600', ...statusColor(issue.status) }}>
+      ✅ Resolved
+    </span>
+  </div>
+))}
         </div>
       </div>
 
