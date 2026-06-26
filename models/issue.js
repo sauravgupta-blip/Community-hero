@@ -9,6 +9,7 @@ const IssueSchema = new mongoose.Schema({
     default: 'Other'
   },
   severity: { type: Number, min: 1, max: 5, default: 3 },
+userSeverity: { type: String, enum: ['Low', 'Medium', 'High', 'Urgent'], default: 'Medium' },
   location: {
     lat: Number,
     lng: Number,

@@ -35,11 +35,23 @@ const SUGGESTIONS = [
   'Illegal dumping',
 ];
 
+const SEVERITY_LEVELS = [
+  { key: 'Low', color: '#16a34a', bg: '#dcfce7' },
+  { key: 'Medium', color: '#ca8a04', bg: '#fef9c3' },
+  { key: 'High', color: '#ea580c', bg: '#ffedd5' },
+  { key: 'Urgent', color: '#dc2626', bg: '#fee2e2' },
+];
+
 const statusColor = (status) => {
   if (status === 'resolved') return { background: '#d4edda', color: '#155724' };
   if (status === 'verified') return { background: '#fff3cd', color: '#856404' };
   if (status === 'in-progress') return { background: '#cce5ff', color: '#004085' };
   return { background: '#e2e3e5', color: '#383d41' };
+};
+
+const severityStyle = (level) => {
+  const found = SEVERITY_LEVELS.find(s => s.key === level);
+  return found ? { background: found.bg, color: found.color } : { background: '#eee', color: '#555' };
 };
 
 function getStepIndex(status) {
@@ -367,6 +379,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
   const [locationStatus, setLocationStatus] = useState('Detecting location...');
   const [department, setDepartment] = useState(null);
   const [newIssueStatus, setNewIssueStatus] = useState(null);
+  const [userSeverity, setUserSeverity] = useState('Medium');
 
   const filteredSuggestions = description.length > 0
     ? SUGGESTIONS.filter(s => s.toLowerCase().includes(description.toLowerCase())).slice(0, 5)
@@ -421,7 +434,8 @@ function ReportPage({ onBack, issues, refreshIssues }) {
             latitude: location ? location.lat : 25.3176,
             longitude: location ? location.lng : 82.9739,
             address: location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : 'Unknown location',
-            userId: 'user123'
+            userId: 'user123',
+            userSeverity
           })
         });
 
@@ -435,6 +449,7 @@ function ReportPage({ onBack, issues, refreshIssues }) {
           setDescription('');
           setImage(null);
           setPreview(null);
+          setUserSeverity('Medium');
           refreshIssues();
         } else {
           setMessageType('error');
@@ -501,6 +516,17 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     },
     suggestionItem: {
       padding: '10px 15px', fontSize: '13px', cursor: 'pointer', borderBottom: '1px solid #f0f0f0',
+    },
+    severityRow: { display: 'flex', gap: '8px' },
+    severityBtn: (level, active) => {
+      const s = SEVERITY_LEVELS.find(x => x.key === level);
+      return {
+        flex: 1, padding: '10px 8px', borderRadius: '8px', fontSize: '13px', fontWeight: '600',
+        cursor: 'pointer', textAlign: 'center',
+        border: active ? `2px solid ${s.color}` : '2px solid #e0e0e0',
+        background: active ? s.bg : 'white',
+        color: active ? s.color : '#888',
+      };
     },
     button: {
       padding: '14px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -586,6 +612,21 @@ function ReportPage({ onBack, issues, refreshIssues }) {
             </div>
 
             <div style={styles.formGroup}>
+              <label style={styles.label}>🚨 How urgent is this?</label>
+              <div style={styles.severityRow}>
+                {SEVERITY_LEVELS.map((s) => (
+                  <div
+                    key={s.key}
+                    style={styles.severityBtn(s.key, userSeverity === s.key)}
+                    onClick={() => setUserSeverity(s.key)}
+                  >
+                    {s.key}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={styles.formGroup}>
               <label style={styles.label}>📸 Upload Image:</label>
               <input type="file" accept="image/*" onChange={handleImageChange} style={styles.input} />
               {preview && <img src={preview} alt="Preview" style={styles.preview} />}
@@ -618,6 +659,9 @@ function ReportPage({ onBack, issues, refreshIssues }) {
               return (
                 <div key={issue._id} style={styles.historyItem}>
                   <span style={{ ...styles.badge, ...statusColor(issue.status) }}>{issue.status}</span>
+                  {issue.userSeverity && (
+                    <span style={{ ...styles.badge, ...severityStyle(issue.userSeverity) }}>{issue.userSeverity}</span>
+                  )}
                   <span style={styles.dateText}>📅 {formatDate(issue.createdAt)}</span>
                   <div style={{ marginTop: '6px' }}>
                     <strong>{issue.category}</strong> — {issue.description}
