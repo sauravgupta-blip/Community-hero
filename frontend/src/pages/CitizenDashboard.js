@@ -861,4 +861,3 @@ function ReportPage({ onBack, issues, refreshIssues }) {
   );
 }
 
-export default App;
