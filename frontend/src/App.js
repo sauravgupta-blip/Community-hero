@@ -62,7 +62,7 @@ function getStepIndex(status) {
 function formatDate(dateStr) {
   if (!dateStr) return 'Unknown date';
   const d = new Date(dateStr);
-  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) +
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) +
     ' • ' + d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 }
 
@@ -79,22 +79,22 @@ function StatusStepper({ status, compact }) {
     wrapper: { display: 'flex', alignItems: 'center', margin: compact ? '10px 0' : '20px 0' },
     stepWrap: { display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 },
     circle: (done, current) => ({
-      width: compact ? '18px' : '28px',
-      height: compact ? '18px' : '28px',
+      width: compact ? '16px' : '28px',
+      height: compact ? '16px' : '28px',
       borderRadius: '50%',
       background: done ? '#4338ca' : '#e0e0e0',
       color: done ? 'white' : '#999',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: compact ? '10px' : '13px',
+      fontSize: compact ? '9px' : '13px',
       fontWeight: '700',
-      border: current ? '3px solid #c7d2fe' : 'none',
+      border: current ? '2px solid #c7d2fe' : 'none',
       transition: 'all 0.3s',
     }),
     line: (done) => ({
       flex: 1,
-      height: '3px',
+      height: '2px',
       background: done ? '#4338ca' : '#e0e0e0',
       transition: 'all 0.3s',
     }),
@@ -491,11 +491,31 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     } catch (err) {}
   };
 
+  // Toggle voting: click again to undo, switching types removes the old vote
   const handleVote = async (id, type) => {
-    if (votedIssues[id]) return;
-    try {
-      await fetch(`${API_BASE}/api/issues/${id}/${type}`, { method: 'POST' });
+    const current = votedIssues[id];
+    let upvoteDelta = 0;
+    let downvoteDelta = 0;
+
+    if (current === type) {
+      // undo
+      if (type === 'upvote') upvoteDelta = -1;
+      else downvoteDelta = -1;
+      setVotedIssues(prev => { const copy = { ...prev }; delete copy[id]; return copy; });
+    } else {
+      if (current === 'upvote') upvoteDelta -= 1;
+      if (current === 'downvote') downvoteDelta -= 1;
+      if (type === 'upvote') upvoteDelta += 1;
+      else downvoteDelta += 1;
       setVotedIssues(prev => ({ ...prev, [id]: type }));
+    }
+
+    try {
+      await fetch(`${API_BASE}/api/issues/${id}/vote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upvoteDelta, downvoteDelta })
+      });
       refreshIssues();
     } catch (err) {}
   };
@@ -578,33 +598,49 @@ function ReportPage({ onBack, issues, refreshIssues }) {
     },
     deptTitle: { fontWeight: '700', marginBottom: '8px', color: '#4338ca' },
     historySection: { marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' },
-    historyTitle: { fontWeight: '700', fontSize: '16px', marginBottom: '12px', color: '#333' },
-    historyItem: { padding: '12px', border: '1px solid #eee', borderRadius: '8px', marginBottom: '12px', fontSize: '13px' },
-    badge: { display: 'inline-block', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: '600', marginRight: '8px' },
-    dateText: { fontSize: '11px', color: '#aaa', float: 'right' },
-    actionRow: { display: 'flex', gap: '8px', marginTop: '8px', flexWrap: 'wrap', alignItems: 'center' },
-    verifyBtn: {
-      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
-      border: '1px solid #c7d2fe', background: '#eef2ff', color: '#4338ca', cursor: 'pointer',
+    historyTitle: { fontWeight: '700', fontSize: '16px', marginBottom: '14px', color: '#333' },
+
+    // --- Redesigned card ---
+    card: {
+      border: '1px solid #eee', borderRadius: '10px', marginBottom: '14px',
+      overflow: 'hidden', fontSize: '13px',
     },
+    cardTop: {
+      display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+      padding: '12px 14px 0 14px',
+    },
+    badgeGroup: { display: 'flex', gap: '6px', flexWrap: 'wrap' },
+    badge: { padding: '2px 9px', borderRadius: '10px', fontSize: '10px', fontWeight: '700' },
+    dateText: { fontSize: '11px', color: '#aaa', whiteSpace: 'nowrap' },
+    cardBody: { padding: '8px 14px 4px 14px' },
+    cardTitleLine: { fontSize: '14px', color: '#222' },
+    cardLocation: { fontSize: '12px', color: '#888', marginTop: '3px', display: 'flex', alignItems: 'center', gap: '5px' },
+    mapIconLink: { color: '#854d0e', textDecoration: 'none', fontSize: '12px' },
+    stepperWrap: { padding: '0 14px' },
+    cardFooter: {
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '10px 14px', background: '#fafafa', borderTop: '1px solid #f0f0f0', flexWrap: 'wrap', gap: '8px',
+    },
+    voteGroup: { display: 'flex', gap: '6px' },
+    voteBtn: (active) => ({
+      padding: '4px 10px', fontSize: '12px', borderRadius: '6px', fontWeight: '600',
+      border: active ? '1px solid #4338ca' : '1px solid #ddd',
+      background: active ? '#eef2ff' : 'white', color: active ? '#4338ca' : '#555',
+      cursor: 'pointer',
+    }),
+    verifyBtn: {
+      padding: '4px 10px', fontSize: '12px', borderRadius: '6px', fontWeight: '600',
+      border: '1px solid #c7d2fe', background: 'white', color: '#4338ca', cursor: 'pointer',
+    },
+    adminGroup: { display: 'flex', gap: '6px' },
     progressBtn: {
-      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
-      border: '1px solid #93c5fd', background: '#dbeafe', color: '#1e40af', cursor: 'pointer',
+      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', fontWeight: '600',
+      border: '1px solid #93c5fd', background: 'white', color: '#1e40af', cursor: 'pointer',
     },
     resolveBtn: {
-      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
-      border: '1px solid #6ee7b7', background: '#d1fae5', color: '#065f46', cursor: 'pointer',
+      padding: '4px 10px', fontSize: '11px', borderRadius: '6px', fontWeight: '600',
+      border: '1px solid #6ee7b7', background: 'white', color: '#065f46', cursor: 'pointer',
     },
-    mapBtn: {
-      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
-      border: '1px solid #fcd34d', background: '#fef9c3', color: '#854d0e', cursor: 'pointer',
-      textDecoration: 'none', display: 'inline-block',
-    },
-    voteBtn: (active) => ({
-      padding: '5px 12px', fontSize: '11px', borderRadius: '6px',
-      border: '1px solid #ddd', background: active ? '#e0e7ff' : 'white', color: '#444',
-      cursor: active ? 'default' : 'pointer',
-    }),
   };
 
   return (
@@ -701,44 +737,54 @@ function ReportPage({ onBack, issues, refreshIssues }) {
               const link = mapLink(issue.location);
               const voted = votedIssues[issue._id];
               return (
-                <div key={issue._id} style={styles.historyItem}>
-                  <span style={{ ...styles.badge, ...statusColor(issue.status) }}>{issue.status}</span>
-                  {issue.userSeverity && (
-                    <span style={{ ...styles.badge, ...severityStyle(issue.userSeverity) }}>{issue.userSeverity}</span>
-                  )}
-                  <span style={styles.dateText}>📅 {formatDate(issue.createdAt)}</span>
-                  <div style={{ marginTop: '6px' }}>
-                    <strong>{issue.category}</strong> — {issue.description}
-                    {issue.isAnonymous && <span style={{ color: '#888', fontStyle: 'italic' }}> (Anonymous)</span>}
+                <div key={issue._id} style={styles.card}>
+                  <div style={styles.cardTop}>
+                    <div style={styles.badgeGroup}>
+                      <span style={{ ...styles.badge, ...statusColor(issue.status) }}>{issue.status}</span>
+                      {issue.userSeverity && (
+                        <span style={{ ...styles.badge, ...severityStyle(issue.userSeverity) }}>{issue.userSeverity}</span>
+                      )}
+                    </div>
+                    <span style={styles.dateText}>{formatDate(issue.createdAt)}</span>
                   </div>
-                  <div style={{ color: '#888', marginTop: '4px' }}>{issue.location?.address || 'Unknown location'}</div>
 
-                  <StatusStepper status={issue.status} compact />
+                  <div style={styles.cardBody}>
+                    <div style={styles.cardTitleLine}>
+                      <strong>{issue.category}</strong> — {issue.description}
+                      {issue.isAnonymous && <span style={{ color: '#aaa', fontStyle: 'italic' }}> · Anonymous</span>}
+                    </div>
+                    <div style={styles.cardLocation}>
+                      <span>{issue.location?.address || 'Unknown location'}</span>
+                      {link && <a href={link} target="_blank" rel="noopener noreferrer" style={styles.mapIconLink}>📍 Map</a>}
+                    </div>
+                  </div>
 
-                  <div style={styles.actionRow}>
-                    <button style={styles.voteBtn(voted === 'upvote')} onClick={() => handleVote(issue._id, 'upvote')}>
-                      👍 {issue.upvotes || 0}
-                    </button>
-                    <button style={styles.voteBtn(voted === 'downvote')} onClick={() => handleVote(issue._id, 'downvote')}>
-                      👎 {issue.downvotes || 0}
-                    </button>
-                    <button style={styles.verifyBtn} onClick={() => handleVerify(issue._id)}>
-                      ✅ Verify ({issue.verifications || 0})
-                    </button>
-                    {link && (
-                      <a href={link} target="_blank" rel="noopener noreferrer" style={styles.mapBtn}>
-                        📍 View on Map
-                      </a>
-                    )}
+                  <div style={styles.stepperWrap}>
+                    <StatusStepper status={issue.status} compact />
+                  </div>
+
+                  <div style={styles.cardFooter}>
+                    <div style={styles.voteGroup}>
+                      <button style={styles.voteBtn(voted === 'upvote')} onClick={() => handleVote(issue._id, 'upvote')}>
+                        👍 {issue.upvotes || 0}
+                      </button>
+                      <button style={styles.voteBtn(voted === 'downvote')} onClick={() => handleVote(issue._id, 'downvote')}>
+                        👎 {issue.downvotes || 0}
+                      </button>
+                      <button style={styles.verifyBtn} onClick={() => handleVerify(issue._id)}>
+                        ✅ {issue.verifications || 0}
+                      </button>
+                    </div>
+
                     {issue.status !== 'resolved' && (
-                      <>
+                      <div style={styles.adminGroup}>
                         <button style={styles.progressBtn} onClick={() => handleAdvanceStatus(issue._id, 'in-progress')}>
-                          🔧 Mark In Progress
+                          In Progress
                         </button>
                         <button style={styles.resolveBtn} onClick={() => handleAdvanceStatus(issue._id, 'resolved')}>
-                          ✅ Mark Resolved
+                          Resolve
                         </button>
-                      </>
+                      </div>
                     )}
                   </div>
                 </div>

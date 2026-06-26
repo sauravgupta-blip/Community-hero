@@ -112,18 +112,18 @@ router.post('/:id/verify', async (req, res) => {
   }
 });
 
-router.post('/:id/upvote', async (req, res) => {
+router.post('/:id/vote', async (req, res) => {
   try {
-    const issue = await Issue.findByIdAndUpdate(req.params.id, { $inc: { upvotes: 1 } }, { new: true });
-    res.json({ success: true, upvotes: issue.upvotes, downvotes: issue.downvotes });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+    const { upvoteDelta, downvoteDelta } = req.body;
+    const update = {};
+    if (upvoteDelta) update.upvotes = upvoteDelta;
+    if (downvoteDelta) update.downvotes = downvoteDelta;
 
-router.post('/:id/downvote', async (req, res) => {
-  try {
-    const issue = await Issue.findByIdAndUpdate(req.params.id, { $inc: { downvotes: 1 } }, { new: true });
+    const issue = await Issue.findById(req.params.id);
+    issue.upvotes = Math.max(0, (issue.upvotes || 0) + (upvoteDelta || 0));
+    issue.downvotes = Math.max(0, (issue.downvotes || 0) + (downvoteDelta || 0));
+    await issue.save();
+
     res.json({ success: true, upvotes: issue.upvotes, downvotes: issue.downvotes });
   } catch (error) {
     res.status(500).json({ error: error.message });
