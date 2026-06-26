@@ -18,8 +18,9 @@ Communities frequently face infrastructure issues that go unreported or untracke
 Community Hero gives citizens a simple, AI-assisted way to report issues with a photo and description. The platform automatically:
 - Detects the issue category and severity using AI
 - Captures GPS location
+- Detects duplicate reports nearby and merges them instead of creating clutter
 - Routes the report to the correct municipal department
-- Lets the community verify and track issues through to resolution
+- Lets the community verify, vote on, and track issues through to resolution
 
 This creates **transparency, accountability, and citizen participation** in solving local problems.
 
@@ -32,8 +33,13 @@ This creates **transparency, accountability, and citizen participation** in solv
 | 📸 **Image-based Reporting** | Upload a photo and description of any civic issue |
 | 🤖 **AI-Powered Categorization** | Gemini AI automatically detects issue category & severity (with keyword-based fallback for reliability) |
 | 📍 **Geo-Location & Mapping** | Captures live GPS coordinates and links directly to Google Maps |
+| 🚨 **Severity Self-Rating** | Citizens rate urgency (Low/Medium/High/Urgent) at the time of reporting |
+| 🕶️ **Anonymous Reporting** | Option to report issues without revealing identity |
+| 🔁 **Duplicate Detection** | Automatically detects and merges reports of the same issue within 50m, preventing redundant entries |
 | ✅ **Community Verification** | Neighbors can verify reported issues to confirm credibility |
+| 👍 **Upvote / Downvote** | Citizens can vote on issue severity and importance (toggleable) |
 | 📊 **Real-Time Issue Tracking** | 4-stage progress tracker: Issue Raised → Verified → Work Started → Resolved |
+| 📷 **Before/After Comparison** | Authorities upload a resolution photo, shown side-by-side with the original report |
 | 📈 **Impact Dashboard** | Live stats on total issues, resolutions, and category breakdown |
 | 🔮 **Predictive Insights** | Highlights the most-reported issue category as a priority area for authorities |
 | 🏆 **Gamification** | "Top Community Heroes" leaderboard recognizing active reporters |
@@ -63,6 +69,7 @@ This creates **transparency, accountability, and citizen participation** in solv
 **Other**
 - Browser Geolocation API for live GPS capture
 - Google Maps linking for visual location reference
+- Haversine distance formula for duplicate-issue detection
 
 ---
 
@@ -77,7 +84,7 @@ This creates **transparency, accountability, and citizen participation** in solv
     ├── models/
     │   └── issue.js           MongoDB schema for issues
     ├── routes/
-    │   └── issueRoutes.js     API endpoints (create, list, verify, update status)
+    │   └── issueRoutes.js     API endpoints (create, list, verify, vote, update status)
     ├── services/
     │   └── googleAIService.js Gemini AI integration
     ├── server.js               Express server entry point
@@ -89,11 +96,12 @@ This creates **transparency, accountability, and citizen participation** in solv
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `POST` | `/api/issues` | Submit a new issue report |
+| `POST` | `/api/issues` | Submit a new issue report (with built-in duplicate detection) |
 | `GET` | `/api/issues` | Get all reported issues |
 | `GET` | `/api/issues/:id` | Get a single issue by ID |
 | `POST` | `/api/issues/:id/verify` | Add a community verification |
-| `PATCH` | `/api/issues/:id/status` | Update issue status |
+| `POST` | `/api/issues/:id/vote` | Upvote or downvote an issue (toggleable) |
+| `PATCH` | `/api/issues/:id/status` | Update issue status (optionally with an "after" resolution photo) |
 | `GET` | `/api/issues/stats/all` | Get aggregate stats (totals, category breakdown) |
 
 ---
