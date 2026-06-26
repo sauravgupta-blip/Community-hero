@@ -132,18 +132,19 @@ router.post('/:id/vote', async (req, res) => {
 
 router.patch('/:id/status', async (req, res) => {
   try {
-    const { status } = req.body;
+    const { status, afterImage } = req.body;
     const validStatuses = ['open', 'verified', 'in-progress', 'resolved'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
-    const issue = await Issue.findByIdAndUpdate(req.params.id, { status }, { new: true });
+    const update = { status };
+    if (afterImage) update.afterImage = afterImage;
+    const issue = await Issue.findByIdAndUpdate(req.params.id, update, { new: true });
     res.json({ success: true, issue });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
-
 router.get('/stats/all', async (req, res) => {
   try {
     const total = await Issue.countDocuments();

@@ -15,7 +15,8 @@ const IssueSchema = new mongoose.Schema({
     lng: Number,
     address: String
   },
-  images: [String],
+ images: [String],
+ afterImage: { type: String, default: null },
   status: {
     type: String,
     enum: ['open', 'verified', 'in-progress', 'resolved'],
